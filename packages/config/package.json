@@ -1,0 +1,12 @@
+{
+    "name": "@universal-comparator/config",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "./eslint-config-custom/index.js",
+    "exports": {
+      "./eslint": "./eslint-config-custom/index.js",
+      "./prettier": "./prettier-config-custom/index.js",
+      "./tsconfig/base.json": "./tsconfig/base.json"
+    }
+  }
+  
