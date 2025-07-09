@@ -11,13 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Get list of apps/packages
+      - name: Set matrix by discovering workspaces (apps/ + packages/)
         id: set-matrix
         run: |
-          echo "matrix=$(jq -c '.tasks | to_entries | map({ name: .key })' turbo.json)" >> $GITHUB_OUTPUT
+          dirs=$(find apps packages -type d -maxdepth 1 -mindepth 1)
+          json=$(echo "$dirs" | jq -R -s -c 'split("\n")[:-1] | map({name: .})')
+          echo "matrix=$json" >> $GITHUB_OUTPUT
 
   lint-build-test:
     needs: setup
@@ -33,18 +36,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 8
-
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'pnpm'  
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+          run_install: false
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Lint
         run: pnpm run lint || echo "No lint script"
@@ -53,4 +57,4 @@ jobs:
         run: pnpm run build || echo "No build script"
 
       - name: Test
-        run: pnpm run test || echo "No tests"
+        run: pnpm run test || echo "No test script"
