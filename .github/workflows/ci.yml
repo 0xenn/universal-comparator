@@ -11,16 +11,22 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set matrix by discovering workspaces (apps/ + packages/)
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Get list of apps/packages
         id: set-matrix
         run: |
-          dirs=$(find apps packages -type d -maxdepth 1 -mindepth 1)
-          json=$(echo "$dirs" | jq -R -s -c 'split("\n")[:-1] | map({name: .})')
-          echo "matrix=$json" >> $GITHUB_OUTPUT
+          MATRIX=$(jq -c '.pipeline | to_entries | map({ name: .key })' turbo.json)
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies from monorepo root
+        run: pnpm install --frozen-lockfile
 
   lint-build-test:
     needs: setup
@@ -36,19 +42,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8
-          run_install: false
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Reuse root-installed deps
+        run: echo "Skipping pnpm install in subdir – using root install"
 
       - name: Lint
         run: pnpm run lint || echo "No lint script"
