@@ -7,29 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Get list of apps/packages
-        id: set-matrix
-        run: |
-          MATRIX=$(jq -c '.pipeline | to_entries | map({ name: .key })' turbo.json)
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
-
   lint-build-test:
-    needs: setup
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include: ${{ fromJson(needs.setup.outputs.matrix) }}
-
-    defaults:
-      run:
-        working-directory: ${{ matrix.name }}
 
     steps:
       - uses: actions/checkout@v4
@@ -43,11 +22,6 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
-      - name: Build
-        run: npm run build
-
-      - name: Test
-        run: npm run test || echo "No tests"
+      - name: Lint + Build + Test via Turbo
+        run: |
+          npx turbo run lint build test --parallel
