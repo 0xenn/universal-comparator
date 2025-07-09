@@ -22,7 +22,7 @@ jobs:
       - name: Get list of apps/packages
         id: set-matrix
         run: |
-          MATRIX=$(jq -c '.pipeline | to_entries | map({ name: .key })' turbo.json)
+          MATRIX=$(jq -c '.tasks | to_entries | map({ name: .key })' turbo.json)
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
 
       - name: Install dependencies from monorepo root
