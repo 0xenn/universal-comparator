@@ -7,59 +7,68 @@ on:
     branches: [main]
 
 jobs:
-  setup:
+  install:
+    name: Install Dependencies
     runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v3
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
         with:
           version: 8
+          run_install: false
 
-      - name: Get list of apps/packages
-        id: set-matrix
-        run: |
-          MATRIX=$(pnpm -r list --depth -1 --json | jq -c '[.[] | { name: .path }]')
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+      - name: 🔧 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
 
-      - name: Install dependencies from monorepo root
+      - name: Install deps at root
         run: pnpm install --frozen-lockfile
 
   lint-build-test:
-    needs: setup
+    name: Lint, Build & Test
+    needs: install
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
-        include: ${{ fromJson(needs.setup.outputs.matrix) }}
+        project:
+          - apps/frontend
+          - apps/backend
+          - packages/config
+          - packages/ui
+          # Add more paths as needed
 
     defaults:
       run:
-        working-directory: ${{ matrix.name }}
+        working-directory: ${{ matrix.project }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Setup PNPM
-        uses: pnpm/action-setup@v3
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
         with:
           version: 8
+          run_install: false
 
-      - name: Use Node.js
+      - name: 🔧 Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-
-      - name: Reuse root-installed deps
-        run: echo "Skipping pnpm install in subdir – using root install"
+          node-version: 20
+          cache: 'pnpm'
 
       - name: Lint
-        run: pnpm run lint || echo "No lint script"
+        run: pnpm run lint
 
       - name: Build
-        run: pnpm run build || echo "No build script"
+        run: pnpm run build
 
       - name: Test
-        run: pnpm run test || echo "No test script"
+        run: pnpm run test || echo "No tests"
