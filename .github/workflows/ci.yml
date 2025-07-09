@@ -25,7 +25,7 @@ jobs:
       - name: Generate Turbo Matrix from turbo.json
         id: set-matrix
         run: |
-          MATRIX=$(jq -c '.task | to_entries | map({ name: .key })' turbo.json)
+          MATRIX=$jq -c '.tasks | to_entries | map({ name: .key })' turbo.json
           echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
 
   install:
