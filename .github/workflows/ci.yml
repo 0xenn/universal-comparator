@@ -44,6 +44,7 @@ jobs:
 
       - name: Install Dependencies at Monorepo Root
         run: pnpm install --frozen-lockfile
+        working-directory: ${{ github.workspace }}
 
   lint-build-test:
     needs: [setup, install]
