@@ -1,80 +1,44 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [main]
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
 
 jobs:
-  setup:
+  build:
     runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo at root
+        uses: actions/checkout@v4
+        with:
+          path: .  
 
-      - name: Setup jq
-        run: sudo apt-get install -y jq
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'  
+          cache-dependency-path: pnpm-lock.yaml
 
-      - name: Get list of apps/packages from turbo.json
-        id: set-matrix
+      - name: Enable Corepack and activate pnpm
         run: |
-          MATRIX=$(jq -c '.tasks | to_entries | map({ name: .key })' turbo.json)
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          corepack enable
+          corepack prepare pnpm@8 --activate
 
-  install:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
-
-      - name: Install Dependencies at Monorepo Root
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: ${{ github.workspace }}
-
-  lint-build-test:
-    needs: [setup, install]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include: ${{ fromJson(needs.setup.outputs.matrix) }}
-
-    defaults:
-      run:
-        working-directory: ./${{ matrix.name }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
 
       - name: Lint
-        run: pnpm run lint || echo "No lint script"
+        run: pnpm lint
 
-      - name: Build
-        run: pnpm run build || echo "No build script"
+      - name: Type Check
+        run: pnpm check-types
 
       - name: Test
-        run: pnpm run test || echo "No test script"
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
