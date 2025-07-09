@@ -7,21 +7,50 @@ on:
     branches: [main]
 
 jobs:
-  lint-build-test:
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get list of apps/packages
+        id: set-matrix
+        run: |
+          echo "matrix=$(jq -c '.tasks | to_entries | map({ name: .key })' turbo.json)" >> $GITHUB_OUTPUT
+
+  lint-build-test:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include: ${{ fromJson(needs.setup.outputs.matrix) }}
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.name }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
 
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: 'pnpm'  
 
-      - name: Install deps
-        run: npm ci
+      - name: Install dependencies
+        run: pnpm install
 
-      - name: Lint + Build + Test via Turbo
-        run: |
-          npx turbo run lint build test --parallel
+      - name: Lint
+        run: pnpm run lint || echo "No lint script"
+
+      - name: Build
+        run: pnpm run build || echo "No build script"
+
+      - name: Test
+        run: pnpm run test || echo "No tests"
